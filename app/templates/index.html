@@ -1,0 +1,288 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción del Clima por Imágenes</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            border-color: #3498db;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .upload-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .image-container {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        
+        .predictions-container {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        
+        .prediction-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #eaeaea;
+        }
+        
+        .prediction-item:nth-child(1) {
+            background-color: #d5f5e3;
+        }
+        
+        .prediction-item:nth-child(2) {
+            background-color: #ebf5fb;
+        }
+        
+        .prediction-item:nth-child(3) {
+            background-color: #fadbd8;
+        }
+        
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Predicción del Clima por Imágenes</h1>
+        <p>Climas a predecir: lluvia, relampago, neblina, granizo, arcoiris, tormenta de arena, nieve</h2>
+        
+        <div class="upload-section" id="upload-section">
+            <p>Sube una imagen para predecir el tipo de clima</p>
+            <input type="file" accept="image/*" class="file-input" id="file-input">
+            <button class="upload-btn" id="upload-btn">Seleccionar Imagen</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando imagen...</p>
+        </div>
+        
+        <div class="error-message" id="error-message">
+            Ha ocurrido un error al procesar la imagen.
+        </div>
+        
+        <div class="results-container" id="results-container">
+            <div class="image-container">
+                <h2>Imagen subida</h2>
+                <img id="uploaded-image" src="" alt="Imagen subida">
+            </div>
+            
+            <div class="predictions-container">
+                <h2>Predicciones</h2>
+                <div id="predictions-list"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            const uploadBtn = document.getElementById('upload-btn');
+            const uploadSection = document.getElementById('upload-section');
+            const loadingElement = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const resultsContainer = document.getElementById('results-container');
+            const uploadedImage = document.getElementById('uploaded-image');
+            const predictionsList = document.getElementById('predictions-list');
+            
+            // Mostrar el selector de archivos al hacer clic en el botón
+            uploadBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // Activar la subida al seleccionar un archivo
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    if (file.type.startsWith('image/')) {
+                        uploadFile(file);
+                    } else {
+                        showError('Por favor, selecciona un archivo de imagen válido.');
+                    }
+                }
+            });
+            
+            // También permitir arrastrar y soltar
+            uploadSection.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#3498db';
+                uploadSection.style.backgroundColor = '#f0f9ff';
+            });
+            
+            uploadSection.addEventListener('dragleave', function() {
+                uploadSection.style.borderColor = '#ccc';
+                uploadSection.style.backgroundColor = '';
+            });
+            
+            uploadSection.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#ccc';
+                uploadSection.style.backgroundColor = '';
+                
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type.startsWith('image/')) {
+                        uploadFile(file);
+                    } else {
+                        showError('Por favor, arrastra un archivo de imagen válido.');
+                    }
+                }
+            });
+            
+            function uploadFile(file) {
+                // Mostrar indicador de carga
+                loadingElement.style.display = 'block';
+                errorMessage.style.display = 'none';
+                resultsContainer.style.display = 'none';
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la solicitud');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingElement.style.display = 'none';
+                    
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+                    
+                    // Mostrar imagen subida
+                    uploadedImage.src = `data:image/jpeg;base64,${data.image}`;
+                    
+                    // Mostrar predicciones
+                    predictionsList.innerHTML = '';
+                    data.predictions.forEach(prediction => {
+                        const predictionItem = document.createElement('div');
+                        predictionItem.className = 'prediction-item';
+                        predictionItem.innerHTML = `
+                            <strong>${prediction.class}:</strong> ${prediction.probability}
+                        `;
+                        predictionsList.appendChild(predictionItem);
+                    });
+                    
+                    // Mostrar resultados
+                    resultsContainer.style.display = 'flex';
+                })
+                .catch(error => {
+                    loadingElement.style.display = 'none';
+                    showError('Ocurrió un error al procesar la imagen.');
+                    console.error('Error:', error);
+                });
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
